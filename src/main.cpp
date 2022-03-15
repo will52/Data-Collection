@@ -1,28 +1,15 @@
-/*
-  SD card read/write
-
-  This example shows how to read and write data to and from an SD card file
-  The circuit:
-   SD card attached to SPI bus as follows:
- ** MOSI - pin 11
- ** MISO - pin 12
- ** CLK - pin 13
- ** CS - pin 4 (for MKRZero SD: SDCARD_SS_PIN)
-
-  created   Nov 2010
-  by David A. Mellis
-  modified 9 Apr 2012
-  by Tom Igoe
-
-  This example code is in the public domain.
-
-*/
-
+#include <Arduino.h>
+#include <Nano33BLE_System.h>
 #include <LSM9DS1.h>
 #include <SD.h>
 #include <SPI.h>
 
 File dataFile;
+PinStatus button;
+PinStatus oldButton = LOW;
+char record = false;
+char ledCount = 0;
+bool led = false;
 
 void setup() {
     // Open serial communications and wait for port to open:
@@ -44,50 +31,45 @@ void setup() {
     }
     Serial.println("initialization done.");
 
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
-    dataFile = SD.open("test.txt", FILE_WRITE);
-
-    // if the file opened okay, write to it:
-    if (dataFile) {
-        Serial.print("Writing to test.txt...");
-        dataFile.println("testing 1, 2, 3.");
-        // close the file:
-        dataFile.close();
-        Serial.println("done.");
-    } else {
-        // if the file didn't open, print an error:
-        Serial.println("error opening test.txt");
-    }
-
-    // re-open the file for reading:
-    dataFile = SD.open("test.txt");
-    if (dataFile) {
-        Serial.println("test.txt:");
-
-        // read from the file until there's nothing else in it:
-        while (dataFile.available()) {
-            Serial.write(dataFile.read());
-        }
-        // close the file:
-        dataFile.close();
-    } else {
-        // if the file didn't open, print an error:
-        Serial.println("error opening test.txt");
-    }
+    pinMode(3,OUTPUT);
+    digitalWrite(3, HIGH);
+    pinMode(4, INPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-    // nothing happens after setup
+    button = digitalRead(4);
+    char pressed = false;
+    if(button>oldButton){
+        pressed = true;
+    }
+    oldButton = button;
+    if(record){
+        saveData();
+        ledCount++;
+        if(ledCount>20){
+            led = !led;
+            ledCount = 0;
+            digitalWrite(LED_BUILTIN, led);
+        }
+        if(pressed){
+            closeFile();
+            record = false;
+        }
+    }else{
+        if(pressed){
+            createFile();
+            record = true;
+        }
+    }
+    delayMicroseconds(9615); //delay needed to run above code at 104Hz, ignoring the time to run the code
 }
 
 void saveData() {
-	float x, y, z;
-	IMU.readAcceleration(x,y,z);
-	char written = 0;
-	written += dataFile.write((char*) &x,4);
-	written += dataFile.write((char*) &y,4);
-	written += dataFile.write((char*) &z,4);
+    float data[3];
+    IMU.readAcceleration(data[0], data[1], data[2]);
+    char written = dataFile.write((char*) &data, 12);
 	if(written != 12){
 		Serial.print("Error writting data to file");
 		while(1)
