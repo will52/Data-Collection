@@ -3,10 +3,11 @@
 #include <LSM9DS1.h>
 #include <SD.h>
 #include <SPI.h>
+#include "main.h"
 
 File dataFile;
-PinStatus button;
-PinStatus oldButton = LOW;
+PinStatus button = HIGH;
+PinStatus oldButton = HIGH;
 char record = false;
 char ledCount = 0;
 bool led = false;
@@ -31,28 +32,25 @@ void setup() {
     }
     Serial.println("initialization done.");
 
-    pinMode(3,OUTPUT);
-    digitalWrite(3, HIGH);
-    pinMode(4, INPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
+    pinMode(2,INPUT_PULLUP);
 }
 
 void loop() {
-    button = digitalRead(4);
-    char pressed = false;
-    if(button>oldButton){
+    button = digitalRead(2);
+    bool pressed = false;
+    if(button == LOW && oldButton == HIGH){
+        Serial.println("pressed");
         pressed = true;
     }
     oldButton = button;
     if(record){
         saveData();
-        ledCount++;
-        if(ledCount>20){
-            led = !led;
-            ledCount = 0;
-            digitalWrite(LED_BUILTIN, led);
-        }
+        // ledCount++;
+        // if(ledCount>20){
+        //     led = !led;
+        //     ledCount = 0;
+        //     digitalWrite(LED_BUILTIN, led);
+        // }
         if(pressed){
             closeFile();
             record = false;
@@ -69,7 +67,7 @@ void loop() {
 void saveData() {
     float data[3];
     IMU.readAcceleration(data[0], data[1], data[2]);
-    char written = dataFile.write((char*) &data, 12);
+    size_t written = dataFile.write((char*) &data, 12);
 	if(written != 12){
 		Serial.print("Error writting data to file");
 		while(1)
@@ -79,12 +77,18 @@ void saveData() {
 
 void createFile(){
 	int fileNum = 1;
-	String filename = String(fileNum+".dat");
+	String filename = String(fileNum) + ".dat";
 	while(SD.exists(filename)){
 		fileNum++;
-		filename = String(fileNum+".dat");
+		filename = String(fileNum) + ".dat";
 	}
+    Serial.println(filename);
 	dataFile = SD.open(filename, FILE_WRITE);
+    if(!dataFile){
+        Serial.println("Error opening file");
+        while(1)
+            ;
+    }
 }
 
 void closeFile(){
