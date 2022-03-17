@@ -11,6 +11,7 @@ PinStatus oldButton = HIGH;
 char record = false;
 char ledCount = 0;
 bool led = false;
+int catchup = 0;
 
 void setup() {
     // Open serial communications and wait for port to open:
@@ -25,6 +26,7 @@ void setup() {
 			;
 	}
 
+    pinMode(10,OUTPUT);
     if (!SD.begin(10)) {
         Serial.println("SD init failed");
         while (1)
@@ -36,6 +38,10 @@ void setup() {
 }
 
 void loop() {
+    //check start time
+    int start = micros();
+
+    //check for button press (falling edge)
     button = digitalRead(2);
     bool pressed = false;
     if(button == LOW && oldButton == HIGH){
@@ -43,6 +49,8 @@ void loop() {
         pressed = true;
     }
     oldButton = button;
+
+    //file handling
     if(record){
         saveData();
         // ledCount++;
@@ -61,7 +69,17 @@ void loop() {
             record = true;
         }
     }
-    delayMicroseconds(9615); //delay needed to run above code at 104Hz, ignoring the time to run the code
+
+    //timing handling for 104Hz
+    int timeTaken = micros() - start;
+    int delay = 9600 - timeTaken - catchup;
+    if(!record) delay = 9600;
+    if(delay<0){
+        catchup = delay*-1;
+    }else{
+        catchup = 0;
+        delayMicroseconds(delay);
+    }
 }
 
 void saveData() {
