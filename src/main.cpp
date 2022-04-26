@@ -14,15 +14,17 @@ bool led = false;
 int catchup = 0;
 
 void setup() {
-    // Open serial communications and wait for port to open:
+    // Open serial communications:
     Serial.begin(9600);
 
+    //initialise accelerometer
     if(!IMU.begin()){
 		Serial.print("IMU init failed");
 		while(1)
 			;
 	}
 
+    //initialise SD card module
     pinMode(10,OUTPUT);
     if (!SD.begin(10)) {
         Serial.println("SD init failed");
@@ -74,8 +76,10 @@ void loop() {
 }
 
 void saveData() {
+    //read xyz from accelerometer
     float data[3];
     IMU.readAcceleration(data[0], data[1], data[2]);
+    //write data to file
     size_t written = dataFile.write((char*) &data, 12);
 	if(written != 12){
 		Serial.print("Error writting data to file");
@@ -85,6 +89,7 @@ void saveData() {
 }
 
 void createFile(){
+    //creat numbered file for data storage
 	int fileNum = 1;
 	String filename = String(fileNum) + ".dat";
 	while(SD.exists(filename)){
@@ -101,5 +106,6 @@ void createFile(){
 }
 
 void closeFile(){
+    //close file to save data
 	dataFile.close();
 }
